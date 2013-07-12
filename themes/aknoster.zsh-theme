@@ -25,8 +25,17 @@
 ### Segment drawing
 # A few utility functions to make it easy and re-usable to draw segmented prompts
 
+CH_SEP="\xe2\xae\x80"
+CH_PMINUS="\xc2\xb1"
+CH_BRANCH="\xe2\xad\xa0"
+CH_ARROW="\xe2\x9e\xa6"
+CH_YES="\xe2\x9c\x94"
+CH_NO="\xe2\x9c\x98"
+CH_PIKA="\xe2\x9a\xa1"
+CH_COG="\xe2\x9a\x99"
+
 CURRENT_BG='NONE'
-SEGMENT_SEPARATOR=''
+SEGMENT_SEPARATOR=$CH_SEP
 RETVAL=''
 
 # Begin a segment
@@ -37,9 +46,9 @@ prompt_segment() {
   [[ -n $1 ]] && bg="%K{$1}" || bg="%k"
   [[ -n $2 ]] && fg="%F{$2}" || fg="%f"
   if [[ $CURRENT_BG != 'NONE' && $1 != $CURRENT_BG ]]; then
-    echo -n " %{$bg%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{$fg%} "
+    echo -e -n " %{$bg%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{$fg%} "
   else
-    echo -n "%{$bg%}%{$fg%} "
+    echo -e -n "%{$bg%}%{$fg%} "
   fi
   CURRENT_BG=$1
   [[ -n $3 ]] && echo -n $3
@@ -73,7 +82,7 @@ prompt_git() {
   local ref dirty
   if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
     dirty=$(parse_git_dirty)
-    ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="➦ $(git show-ref --head -s --abbrev |head -n1 2> /dev/null)"
+    ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="$CH_ARROW $(git show-ref --head -s --abbrev |head -n1 2> /dev/null)"
     if [[ -n $dirty ]]; then
       prompt_segment yellow black
     else
@@ -86,12 +95,12 @@ prompt_git() {
     zstyle ':vcs_info:*' enable git
     zstyle ':vcs_info:*' get-revision true
     zstyle ':vcs_info:*' check-for-changes true
-    zstyle ':vcs_info:*' stagedstr '✚'
-    zstyle ':vcs_info:git:*' unstagedstr '●'
+    zstyle ':vcs_info:*' stagedstr "$CH_ARROW"
+    zstyle ':vcs_info:git:*' unstagedstr "$CH_PMINUS"
     zstyle ':vcs_info:*' formats ' %u%c'
     zstyle ':vcs_info:*' actionformats '%u%c'
     vcs_info
-    echo -n "${ref/refs\/heads\// }${vcs_info_msg_0_}"
+    echo -n "${ref/refs\/heads\//$CH_BRANCH }${vcs_info_msg_0_}"
   fi
 }
 
@@ -102,37 +111,37 @@ prompt_hg() {
 			if [[ $(hg prompt "{status|unknown}") = "?" ]]; then
 				# if files are not added
 				prompt_segment red white
-				st='±'
+				st=$CH_PMINUS
 			elif [[ -n $(hg prompt "{status|modified}") ]]; then
 				# if any modification
 				prompt_segment yellow black
-				st='±'
+				st=$CH_PMINUS
 			else
 				# if working copy is clean
 				prompt_segment green black
 			fi
-			echo -n $(hg prompt " {rev}@{branch}") $st
+			echo -n $(hg prompt "$CH_BRANCH {rev}@{branch}") $st
 		else
 			st=""
 			rev=$(hg id -n 2>/dev/null | sed 's/[^-0-9]//g')
 			branch=$(hg id -b 2>/dev/null)
 			if `hg st | grep -Eq "^\?"`; then
 				prompt_segment red black
-				st='±'
+				st=$CH_PMINUS
 			elif `hg st | grep -Eq "^(M|A)"`; then
 				prompt_segment yellow black
-				st='±'
+				st=$CH_PMINUS
 			else
 				prompt_segment green black
 			fi
-			echo -n " $rev@$branch" $st
+			echo -n "$CH_BRANCH $rev@$branch" $st
 		fi
 	fi
 }
 
 # Dir: current working directory
 prompt_dir() {
-  prompt_segment blue black '%~'
+  prompt_segment blue black '%2~'
 }
 
 # Virtualenv: current working virtualenv
@@ -150,9 +159,9 @@ prompt_virtualenv() {
 prompt_status() {
   local symbols
   symbols=()
-  [[ $RETVAL -ne 0 ]] && symbols+="%{%F{red}%}✘"
-  [[ $UID -eq 0 ]] && symbols+="%{%F{yellow}%}⚡"
-  [[ $(jobs -l | wc -l) -gt 0 ]] && symbols+="%{%F{cyan}%}⚙"
+  [[ $RETVAL -ne 0 ]] && symbols+="%{%F{red}%}$CH_NO"
+  [[ $UID -eq 0 ]] && symbols+="%{%F{yellow}%}$CH_PIKA"
+  [[ $(jobs -l | wc -l) -gt 0 ]] && symbols+="%{%F{cyan}%}$CH_COG"
 
   [[ -n "$symbols" ]] && prompt_segment black default "$symbols"
 }
@@ -176,4 +185,3 @@ build_post_prompt() {
 
 PROMPT='%{%f%b%k%}$(build_prompt)
 $(build_post_prompt) '
-
