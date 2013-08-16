@@ -185,3 +185,4 @@ build_post_prompt() {
 
 PROMPT='%{%f%b%k%}$(build_prompt)
 $(build_post_prompt) '
+
